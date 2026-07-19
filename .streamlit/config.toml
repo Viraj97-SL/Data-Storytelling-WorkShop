@@ -1,0 +1,18 @@
+# Theme for viz/dashboard.py — dark, greyscale, one amber accent. Deliberately
+# not the "Light Luxury" palette in viz/shared.py (that one's still correct
+# for the static viz/01-04 chart scripts, which this file doesn't touch).
+[theme]
+base = "dark"
+primaryColor = "#d99a3e"
+backgroundColor = "#0e0e0e"
+secondaryBackgroundColor = "#151515"
+textColor = "#e8e6e0"
+borderColor = "#262624"
+font = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&display=swap"
+baseFontSize = 15
+headingFont = "IBM Plex Sans:https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&display=swap"
+baseRadius = "none"
+buttonRadius = "none"
+showWidgetBorder = false
+greenColor = "#8a8a86"
+redColor = "#d99a3e"
