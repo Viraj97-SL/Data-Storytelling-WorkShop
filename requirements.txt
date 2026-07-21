@@ -1,0 +1,15 @@
+# Streamlit Community Cloud reads requirements.txt from the repo root, not
+# from application/ (where the fuller local-dev requirements.txt lives —
+# see that file for the complete chart-script + testing stack). This file
+# covers only what viz/dashboard.py itself imports, so the deployed app
+# doesn't pull in dependencies it never uses:
+#   - matplotlib/seaborn/altair/bokeh: only viz/01-04 import these, and
+#     those static scripts don't run on Cloud.
+#   - sqlalchemy/psycopg2-binary: only needed for a real Postgres export;
+#     the deployed app reads the committed sample parquet (USE_SAMPLE=1),
+#     never connects to a database.
+streamlit
+pandas
+numpy
+plotly
+pyarrow
