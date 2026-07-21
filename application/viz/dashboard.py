@@ -39,6 +39,8 @@ import streamlit as st
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from shared import (
+    EXPORT_DIR,
+    DataUnavailableError,
     assign_pay_band,
     classify_rising_cooling,
     humanize_label,
@@ -640,10 +642,26 @@ def _tab_deeper_analysis(jobs: pd.DataFrame, skills: pd.DataFrame, seen: pd.Data
 def main() -> None:
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-    jobs_all = _load_jobs()
-    skills_all = _load_skills()
-    cooc_all = _load_cooccurrence()
-    seen_all = _load_seen()
+    # Defensive: a missing data file used to reach this point as a bare
+    # sys.exit(), which Streamlit's error UI never caught (SystemExit isn't
+    # an Exception) — it produced a silent blank page with no visible error
+    # and nothing in the logs. Load loudly instead.
+    try:
+        jobs_all = _load_jobs()
+        skills_all = _load_skills()
+        cooc_all = _load_cooccurrence()
+        seen_all = _load_seen()
+    except DataUnavailableError as e:
+        st.error(f"Couldn't load any data for this dashboard.\n\n{e}")
+        return
+
+    if not (EXPORT_DIR / "jobmarket.parquet").exists():
+        st.info(
+            "No real export found at `data/exports/` — showing the committed "
+            "synthetic sample instead (obviously-fake company names; see "
+            "`application/README.md`). This is expected on a fresh clone or "
+            "on Streamlit Cloud.",
+        )
 
     if jobs_all.empty:
         st.warning("No data in data/exports/. Run `python scripts/export_for_viz.py` first.")

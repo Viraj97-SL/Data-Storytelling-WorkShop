@@ -1,6 +1,9 @@
 # Theme for viz/dashboard.py — dark, greyscale, one amber accent. Deliberately
 # not the "Light Luxury" palette in viz/shared.py (that one's still correct
 # for the static viz/01-04 chart scripts, which this file doesn't touch).
+#
+# DUPLICATED at ../.streamlit/config.toml (repo root), deliberately — see
+# that copy's comment for why both are needed.
 [theme]
 base = "dark"
 primaryColor = "#d99a3e"

@@ -54,13 +54,50 @@ _SAMPLE_FILENAMES = {
 }
 
 
+class DataUnavailableError(RuntimeError):
+    """Neither a real export nor a synthetic sample exists for a required file.
+
+    Deliberately not SystemExit/sys.exit: Streamlit's own error-rendering
+    only catches Exception, not BaseException, so a bare sys.exit() call
+    inside a Streamlit script terminates that script run with no visible
+    error at all (whatever rendered before the exit point is all you get —
+    on Streamlit Cloud, with no USE_SAMPLE env var set and no real export
+    committed, that was a silent blank page, not a crash anyone could see
+    or debug from the logs). A real exception lets the caller show it.
+    """
+
+
 def _data_path(filename: str) -> Path:
+    """
+    Resolve filename to a real export path, falling back to the committed
+    synthetic sample when the real export is missing and sample mode wasn't
+    explicitly requested (USE_SAMPLE=1 / --sample always uses the sample
+    path directly, without checking for a real export first).
+    """
+    sample_name = _SAMPLE_FILENAMES.get(filename)
+
     if USE_SAMPLE:
-        sample_name = _SAMPLE_FILENAMES.get(filename)
         if sample_name is None:
-            sys.exit(f"No synthetic sample exists for {filename} — USE_SAMPLE only covers jobs/job_skills/seen_jobs/skill_cooccurrence.")
+            raise DataUnavailableError(
+                f"No synthetic sample exists for {filename} — USE_SAMPLE only "
+                "covers jobs/job_skills/seen_jobs/skill_cooccurrence."
+            )
         return SAMPLE_DIR / sample_name
-    return EXPORT_DIR / filename
+
+    real_path = EXPORT_DIR / filename
+    if real_path.exists():
+        return real_path
+
+    if sample_name is not None:
+        sample_path = SAMPLE_DIR / sample_name
+        if sample_path.exists():
+            return sample_path
+
+    raise DataUnavailableError(
+        f"Missing {real_path}, and no synthetic sample fallback is available "
+        f"for {filename}.\nRun `python scripts/export_for_viz.py` (real data) "
+        "or `python scripts/generate_sample_data.py` (sample) first."
+    )
 
 # ── week_start / classify_rising_cooling ─────────────────────────────────
 # A skill with fewer than this many total zero-followed-by-nonzero weeks of
@@ -306,23 +343,9 @@ def assign_pay_band(salary_midpoints: pd.Series) -> pd.Series:
     return pd.qcut(salary_midpoints, q=3, labels=PAY_BAND_ORDER, duplicates="drop").astype(str)
 
 
-def _require_export(path: Path) -> None:
-    if not path.exists():
-        hint = (
-            "Run `python scripts/generate_sample_data.py` once, then set "
-            "USE_SAMPLE=1 (or pass --sample)."
-            if USE_SAMPLE else
-            "Run `python scripts/export_for_viz.py` first to populate "
-            "data/exports/, or set USE_SAMPLE=1 / pass --sample to run "
-            "against the committed synthetic sample instead."
-        )
-        sys.exit(f"Missing {path}.\n{hint}")
-
-
 def load_jobs() -> pd.DataFrame:
     """The full jobs export — one row per posting (market schema)."""
     path = _data_path("jobmarket.parquet")
-    _require_export(path)
     df = pd.read_parquet(path)
     df["scraped_at"] = pd.to_datetime(df["scraped_at"], errors="coerce", utc=True)
     return df
@@ -331,7 +354,6 @@ def load_jobs() -> pd.DataFrame:
 def load_job_skills() -> pd.DataFrame:
     """job_skills export — one row per (job, skill) tag."""
     path = _data_path("job_skills.csv")
-    _require_export(path)
     df = pd.read_csv(path)
     df["extracted_at"] = pd.to_datetime(df["extracted_at"], errors="coerce", utc=True)
     return df
@@ -339,7 +361,6 @@ def load_job_skills() -> pd.DataFrame:
 
 def load_seen_jobs() -> pd.DataFrame:
     path = _data_path("seen_jobs.csv")
-    _require_export(path)
     df = pd.read_csv(path)
     df["first_seen"] = pd.to_datetime(df["first_seen"], errors="coerce", utc=True)
     df["last_seen"] = pd.to_datetime(df["last_seen"], errors="coerce", utc=True)
@@ -348,7 +369,6 @@ def load_seen_jobs() -> pd.DataFrame:
 
 def load_skill_cooccurrence() -> pd.DataFrame:
     path = _data_path("skill_cooccurrence.csv")
-    _require_export(path)
     df = pd.read_csv(path)
     df["week"] = pd.to_datetime(df["week"], errors="coerce")
     return df
@@ -356,7 +376,8 @@ def load_skill_cooccurrence() -> pd.DataFrame:
 
 def load_pipeline_runs() -> pd.DataFrame:
     path = EXPORT_DIR / "pipeline_runs.csv"
-    _require_export(path)
+    if not path.exists():
+        raise DataUnavailableError(f"Missing {path}. Run `python scripts/export_for_viz.py` first — no synthetic sample exists for this table.")
     df = pd.read_csv(path)
     df["started_at"] = pd.to_datetime(df["started_at"], errors="coerce", utc=True)
     return df
@@ -365,7 +386,8 @@ def load_pipeline_runs() -> pd.DataFrame:
 def load_weekly_snapshots() -> pd.DataFrame:
     """Pre-computed weekly aggregates (salary percentiles, job_count, rates) — see README.md for caveats."""
     path = EXPORT_DIR / "weekly_snapshots.csv"
-    _require_export(path)
+    if not path.exists():
+        raise DataUnavailableError(f"Missing {path}. Run `python scripts/export_for_viz.py` first — no synthetic sample exists for this table.")
     df = pd.read_csv(path)
     df["week_start"] = pd.to_datetime(df["week_start"], errors="coerce")
     return df
@@ -416,4 +438,5 @@ __all__ = [
     "load_skill_cooccurrence", "load_pipeline_runs", "load_weekly_snapshots",
     "weekly_counts", "ensure_output_dir", "categorical_color_map",
     "week_start", "classify_rising_cooling", "normalize_location", "EXPORT_DIR", "OUTPUT_DIR",
+    "SAMPLE_DIR", "USE_SAMPLE", "DataUnavailableError",
 ]

@@ -9,14 +9,18 @@
 #     the deployed app reads the committed sample parquet (USE_SAMPLE=1),
 #     never connects to a database.
 #
-# streamlit is pinned deliberately: an unpinned "streamlit" let Cloud drift
-# to a newer version than local dev, which restructured the app's DOM so
-# that the CSS's old `header {visibility:hidden}` chrome-hiding rule hid
-# the entire app body instead of just the toolbar (fixed in
-# application/viz/dashboard.py's CSS regardless, but pin it anyway so
-# local dev and Cloud never silently diverge again).
+# Every dependency below is pinned to the exact version Streamlit Cloud's
+# own build log showed it resolving (Python 3.14.6) when this file left
+# pandas/numpy/pyarrow unpinned — that unpinned state is what let Cloud
+# silently flip-flop between pandas 2.3.3 and 3.0.3 across builds, and
+# resolve pyarrow 25.x (which Cloud then force-downgrades to 24.0.0 to dodge
+# a known segfault: apache/arrow#50471). None of that version drift was the
+# actual cause of the blank-page bug (see application/viz/shared.py's
+# DataUnavailableError and its docstring for the real one), but an
+# unreproducible environment is still its own problem — pin it so local dev
+# and Cloud can never silently diverge on the dependency graph again.
 streamlit==1.52.1
-pandas
-numpy
-plotly
-pyarrow
+pandas==2.3.3
+numpy==2.5.1
+plotly==6.9.0
+pyarrow==24.0.0
