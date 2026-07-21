@@ -1,0 +1,15 @@
+# Pinned to the versions this repo was built and tested against.
+pandas==3.0.1
+numpy==2.4.2
+pyarrow==24.0.0
+sqlalchemy==2.0.48
+psycopg2-binary==2.9.11
+matplotlib==3.11.0
+seaborn==0.13.2
+plotly==6.9.0
+altair==6.2.2
+vl-convert-python==1.9.0.post1
+bokeh==3.9.1
+streamlit==1.52.1
+pytest==9.0.2
+ruff==0.15.21

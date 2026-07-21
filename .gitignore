@@ -1,7 +1,10 @@
-# Real scraped data — never commit, always regenerated locally
-data/exports/
-viz/output/
-viz/story/data/
+# Real scraped data — never commit, always regenerated locally.
+# application/data/sample/ is deliberately NOT listed here — it's committed
+# synthetic data (see application/scripts/generate_sample_data.py), the
+# whole point of which is to be present with zero setup.
+application/data/exports/
+application/viz/output/
+application/viz/story/data/
 
 # Python
 __pycache__/

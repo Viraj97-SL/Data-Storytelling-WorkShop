@@ -1,73 +1,152 @@
 # Data Storytelling Workshop
 
-Two deliverables built from the same UK AI/ML/DS job-market dataset (a
-market-intelligence agent's Postgres export): a multi-library chart survey
-plus an interactive Streamlit dashboard, and a standalone D3 scrollytelling
-story built on a second, related dataset. Nothing here depends on any other
-repo — every data-shaping utility is implemented locally in `viz/shared.py`.
+A workshop artefact plus an applied project built on top of it: a two-day
+UCL SODA course on Python data visualisation, and my own attempt at running
+its techniques against a real, messy dataset instead of the course's clean
+library examples.
 
-## Layout
+<p align="center">
+  <img src="docs/images/dashboard_overview.png" alt="Dashboard overview tab — dark/amber financial-terminal theme" width="90%">
+</p>
+<p align="center">
+  <img src="docs/images/story_visa.png" alt="Scrollytelling story — the visa-licence-gap pictogram step" width="90%">
+</p>
 
-```
-scripts/export_for_viz.py   Exports the market-intelligence DB -> data/exports/*.csv + jobmarket.parquet
-viz/shared.py                Palette, helpers (week_start, normalize_location, classify_rising_cooling, ...)
-viz/01_matplotlib_seaborn.py Salary bands, role composition, top hiring organisations
-viz/02_plotly.py             Skill trends, salary by experience, skill co-occurrence heatmap
-viz/03_altair.py             Work-model mix over time, top UK locations
-viz/04_bokeh.py              Weekly posting volume
-viz/dashboard.py             Streamlit app — dark/greyscale/amber "financial terminal" theme
-viz/story/                   Scrollytelling page (D3 v7 + Scrollama) — see viz/story/README.md
-tests/                       pytest coverage for the story data builder
-```
+*(Both screenshots above are running against the committed synthetic
+sample — see [Honest limitations](#honest-limitations). Two more chart
+screenshots are in [`docs/images/`](docs/images/), and the full chart set
+is in [`docs/charts/`](docs/charts/).)*
 
-See `viz/README.md` for the full design-system writeup, real-data caveats,
-and a chart-by-chart takeaway table. See `viz/story/README.md` for the
-story's narrative outline, sourcing, and the honest cut-corners list.
+## What the workshop was
 
-## Setup
+**Python for Data Storytelling**, UCL SODA (Social Data Institute),
+Edinburgh, 16–17 July 2026. Funded by UKRI under the Data Storytelling for
+Digital Research Infrastructure (DRI) project, convened by Dr. Igor Tkalec.
+Day 1 was explanatory-visualisation theory plus Plotly/Bokeh/Altair; Day 2
+was Streamlit dashboards plus a machine-learning-as-story-angle session
+(decision trees, K-means). Full write-up, the theory citations, and an
+honest technique-by-technique comparison against what I actually built are
+in [`workshop/NOTES.md`](workshop/NOTES.md) — that file is the substantive
+record of the two days, not this README.
+
+## What I built
+
+Two deliverables from the same UK AI/ML/DS job-market dataset (a
+market-intelligence agent's Postgres export — see
+[`application/viz/README.md`](application/viz/README.md) for the real-data
+caveats this project is built around, honestly, rather than around):
+
+- **A chart survey + Streamlit dashboard** (`application/viz/`) — the same
+  four "objectives" the workshop taught (trend, comparison, relationship,
+  proportion) across matplotlib/seaborn, Plotly, Altair, and Bokeh, plus a
+  dashboard that went through several visual redesigns before landing on
+  the dark/greyscale/amber register shown above.
+- **A scrollytelling story** (`application/viz/story/`) — a Tampa Bay
+  Times "Failure Factories"-style single-page scroll narrative, one
+  persistent D3 chart that morphs between states, built from a second,
+  related dataset. See [`application/viz/story/README.md`](application/viz/story/README.md)
+  for the full narrative sourcing and its own honest cut-corners list.
+
+| | |
+|---|---|
+| ![Salary by pay band](docs/charts/01_salary_by_pay_band.png) | ![Top hiring organisations](docs/charts/01_top_hiring_organisations.png) |
+| ![Dashboard: Deeper Analysis tab](docs/images/dashboard_deeper_analysis.png) | ![Story: the narrowing funnel](docs/images/story_funnel.png) |
+
+Interactive Plotly/Altair/Bokeh HTML exports (skill trends, salary by
+experience, skill co-occurrence, work-model mix, top locations, weekly
+posting volume) are in [`docs/charts/`](docs/charts/) — download and open
+them locally; GitHub doesn't render arbitrary HTML inline.
+
+## The design system, and why
+
+The dashboard is deliberately dark, greyscale, with exactly one amber
+accent (`#d99a3e`) reserved for the single most important number per view.
+IBM Plex Sans throughout, including inside every embedded Plotly figure's
+own `layout.font` (not just the Streamlit chrome around it). No rounded
+corners, no box-shadows, no gradients, no emoji, no `st.metric`.
+
+This isn't a style preference floated free of the workshop's own theory —
+it's what "explanatory over exploratory" (Echeverria et al., 2018;
+Dzuranin, n.d. — see `workshop/NOTES.md`) means once you push it past a
+single chart and into a whole dashboard. Every rounded corner, gradient,
+or decorative color is a pixel doing no work — it competes with the one
+thing Dzuranin's explanatory-visualisation process says a finished chart
+should be doing: telling the reader the finding, not decorating around it.
+One accent color used exactly once per view is the same "highlight-one-
+bar" technique from the workshop's own Plotly examples (grey-out
+everything except the point the story is about), just applied at the
+scale of an entire dashboard instead of one chart. Removing `st.metric`
+wasn't a style choice at all — it was a real bug fix (`st.metric`'s
+fixed-width CSS silently truncates compound values; see
+`application/viz/README.md`) that happened to also produce a cleaner KPI
+block once fixed.
+
+## Running it — one command, no database
+
+Every chart script and the dashboard can run against a committed synthetic
+sample with zero setup:
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate            # PowerShell: .venv\Scripts\Activate.ps1
-pip install pandas pyarrow sqlalchemy psycopg2-binary matplotlib seaborn plotly altair bokeh streamlit pytest
+cd application
+pip install -r requirements.txt
+
+# charts -> viz/output/*.png / *.html
+python viz/01_matplotlib_seaborn.py --sample
+python viz/02_plotly.py --sample
+python viz/03_altair.py --sample
+python viz/04_bokeh.py --sample
+
+# dashboard -> http://localhost:8501
+USE_SAMPLE=1 streamlit run viz/dashboard.py
+
+# story -> regenerate its data, then serve it
+python viz/story/build_story_data.py --sample
+cd viz/story && python -m http.server   # http://localhost:8000
 ```
 
-## Getting the data
+`--sample` and `USE_SAMPLE=1` do the same thing — the flag for the
+standalone chart scripts, the env var for `streamlit run` (which can't
+cleanly receive a custom CLI flag). Both point every loader at
+`application/data/sample/` (~2,000 synthetic rows, generated by
+`application/scripts/generate_sample_data.py`, obviously-fake company
+names) instead of a real Postgres export.
 
-Both deliverables read from `data/exports/`, which is never committed (see
-`.gitignore`). Regenerate it from a Postgres connection string:
+To run against real data instead, see the "Getting the data" section in
+[`application/README.md`](application/README.md) — you'll need your own
+Postgres connection string; never commit one.
 
 ```bash
-# PowerShell
-$env:JOBFORGE_VIZ_DB_URL = "postgresql://..."
-python scripts/export_for_viz.py
+pytest tests/       # from inside application/ — 16 tests, all offline
+ruff check .         # from inside application/
 ```
 
-The story additionally needs its own database for `viz/story/build_story_data.py`
-— see `viz/story/README.md` for the full two-source explanation.
+Both run in CI on every push (`.github/workflows/ci.yml`).
 
-## Running the charts and dashboard
+## Honest limitations
 
-```bash
-python viz/01_matplotlib_seaborn.py   # -> viz/output/01_*.png
-python viz/02_plotly.py               # -> viz/output/02_*.html
-python viz/03_altair.py               # -> viz/output/03_*.html
-python viz/04_bokeh.py                # -> viz/output/04_*.html
-streamlit run viz/dashboard.py        # interactive app on localhost:8501
-```
-
-## Running the story
-
-```bash
-cd viz/story
-python -m http.server                 # then open http://localhost:8000
-```
-
-`data/story.json` must be regenerated first (`python viz/story/build_story_data.py`)
-— it is precomputed, never generated client-side, and never committed.
-
-## Tests
-
-```bash
-pytest tests/
-```
+- **Every number on this page and in the linked screenshots comes from the
+  committed synthetic sample, not a real scrape.** Company names are
+  obviously fake, distributions are shaped to mirror the documented real-
+  data caveats (see `application/viz/README.md`) rather than invented from
+  nothing, but nothing here is a genuine market finding. The story page's
+  `--sample` mode goes further and labels every step's source
+  `"(sample)"` plus a `note` field saying so explicitly — see
+  `application/viz/story/README.md`.
+- **The story's funnel/visa/salary-vs-score steps need a second database**
+  that this repo doesn't ship a sample for beyond the illustrative
+  `--sample` numbers above — real regeneration needs
+  `JOBFORGE_PIPELINE_DB_URL` pointed at a Postgres instance with that
+  schema, which is outside this repo's scope.
+- **A real bug was found and fixed while building the story page**: the
+  persistent chart's `position: sticky` was silently broken by
+  `overflow-x: hidden` on `html, body` (a well-known CSS gotcha — that
+  property on any ancestor of a sticky element voids its stickiness
+  against the true viewport). Scoped to `#app` instead; see the comment in
+  `application/viz/story/story.css`.
+- **`workshop/NOTES.md`'s technique mapping is honest about gaps**, not
+  just wins — no decision tree/random forest is used anywhere in
+  `application/` because there's no real target variable here to justify
+  one, and no K-means clustering either (considered, didn't find a result
+  worth standing behind with this data's actual coverage). See that file's
+  closing section rather than assuming every workshop technique made it
+  into the applied side.
