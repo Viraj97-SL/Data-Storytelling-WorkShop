@@ -24,9 +24,19 @@ Run:
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+
+# Streamlit normally puts the main script's own directory on sys.path, but
+# that resolution has been known to shift across versions/entry-path
+# depths (e.g. Streamlit Cloud resolving the entry as
+# application/viz/dashboard.py from the repo root vs. running locally from
+# inside application/) — make it explicit rather than relying on it.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from shared import (
     assign_pay_band,
@@ -39,7 +49,7 @@ from shared import (
     normalize_location,
     week_start,
     with_valid_salary,
-)
+)  # noqa: E402
 
 st.set_page_config(page_title="Market Intelligence", layout="wide", page_icon=None)
 
@@ -112,11 +122,19 @@ CUSTOM_CSS = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;700&display=swap');
 
+    /* Bare `header {{visibility:hidden}}` / `footer {{visibility:hidden}}`
+       element selectors used to be safe when Streamlit's toolbar lived in
+       its own isolated <header>. Newer Streamlit versions nest the entire
+       app body under a <header>-descendant wrapper, so those blanket
+       selectors hide the whole page, not just the chrome (dark background
+       renders, everything else vanishes, no exception — see the version
+       note in the root README). Target the stable data-testid attributes
+       instead, which don't move across Streamlit's own DOM refactors. */
     #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    header {{visibility: hidden;}}
     [data-testid="stToolbar"] {{visibility: hidden;}}
     [data-testid="stDecoration"] {{display: none;}}
+    [data-testid="stStatusWidget"] {{visibility: hidden;}}
+    [data-testid="stHeader"] {{background: transparent;}}
 
     html, body, [class*="css"] {{ font-family: {FONT_FAMILY}; }}
     .stApp {{ background: {BG}; color: {INK}; }}

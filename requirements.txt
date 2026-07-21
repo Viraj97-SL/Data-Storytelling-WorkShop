@@ -8,7 +8,14 @@
 #   - sqlalchemy/psycopg2-binary: only needed for a real Postgres export;
 #     the deployed app reads the committed sample parquet (USE_SAMPLE=1),
 #     never connects to a database.
-streamlit
+#
+# streamlit is pinned deliberately: an unpinned "streamlit" let Cloud drift
+# to a newer version than local dev, which restructured the app's DOM so
+# that the CSS's old `header {visibility:hidden}` chrome-hiding rule hid
+# the entire app body instead of just the toolbar (fixed in
+# application/viz/dashboard.py's CSS regardless, but pin it anyway so
+# local dev and Cloud never silently diverge again).
+streamlit==1.52.1
 pandas
 numpy
 plotly
